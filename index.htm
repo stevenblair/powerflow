@@ -1,0 +1,495 @@
+<html>
+	<head>
+		<title>Visualisation of power flow</title>
+		<link type="text/css" href="css/vader/jquery-ui-1.8.14.custom.css" rel="Stylesheet" />
+		<script type="text/javascript">
+			var _gaq = _gaq || [];
+			_gaq.push(['_setAccount', 'UA-21122920-1']);
+			_gaq.push(['_trackPageview']);
+
+			(function() {
+				var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+				ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+				var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+			})();
+		</script>
+		<script src="js/jquery-1.5.1.min.js"></script>
+		<script src="js/jquery-ui-1.8.14.custom.min.js"></script>
+		<script src="js/processing-1.2.3.min.js"></script>
+		<script type="text/javascript">
+		/**
+		 * Visualisation of power flow
+		 *
+		 * Copyright (c) 2011 Steven Blair
+		 *
+		 * Permission is hereby granted, free of charge, to any person obtaining a copy
+		 * of this software and associated documentation files (the "Software"), to deal
+		 * in the Software without restriction, including without limitation the rights
+		 * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+		 * copies of the Software, and to permit persons to whom the Software is
+		 * furnished to do so, subject to the following conditions:
+		 *
+		 * The above copyright notice and this permission notice shall be included in
+		 * all copies or substantial portions of the Software.
+		 *
+		 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+		 * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+		 * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+		 * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+		 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+		 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+		 * THE SOFTWARE.
+		 */
+
+		Processing.data = {};
+
+		$(function() {
+			$("#slider-Va-mag").slider({
+				value: Processing.data.VaMag,
+				range: "min",
+				min: 0.00,
+				max: 2.00,
+				step: 0.01,
+				orientation: "vertical",
+				slide: function( event, ui ) {
+					Processing.data.VaMag = ui.value;
+					updateLabels();
+				}
+			});
+			$("#slider-Vb-mag").slider({
+				value: Processing.data.VbMag,
+				range: "min",
+				min: 0.00,
+				max: 2.00,
+				step: 0.01,
+				orientation: "vertical",
+				slide: function( event, ui ) {
+					Processing.data.VbMag = ui.value;
+					updateLabels();
+				}
+			});
+			$("#slider-Va-phase").slider({
+				value: Processing.data.VaPhase,
+				range: "min",
+				min: -180.0,
+				max: 180.0,
+				step: 0.1,
+				slide: function( event, ui ) {
+					Processing.data.VaPhase = ui.value;
+					updateLabels();
+				}
+			});
+			$("#slider-Vb-phase").slider({
+				value: Processing.data.VbPhase,
+				range: "min",
+				min: -180.0,
+				max: 180.0,
+				step: 0.1,
+				slide: function( event, ui ) {
+					Processing.data.VbPhase = ui.value;
+					updateLabels();
+				}
+			});
+			$("#slider-R").slider({
+				value: Processing.data.R,
+				range: "min",
+				min: 0.001,
+				max: 2.00,
+				step: 0.001,
+				slide: function( event, ui ) {
+					Processing.data.R = ui.value;
+					updateLabels();
+				}
+			});
+			$("#slider-X").slider({
+				value: Processing.data.X,
+				orientation: "vertical",
+				range: "min",
+				min: -1.0,
+				max: 1.00,
+				step: 0.01,
+				slide: function( event, ui ) {
+					Processing.data.X = ui.value;
+					updateLabels();
+				}
+			});
+			$("#slider-t").slider({
+				value: Processing.data.t,
+				range: "min",
+				min: 0.02/*1 / Processing.data.f*/,
+				max: 0.200,
+				step: 0.001,
+				orientation: "horizontal",
+				slide: function( event, ui ) {
+					Processing.data.t = ui.value;
+					updateLabels();
+				}
+			});
+			$("#slider-f").slider({
+				value: Processing.data.f,
+				range: "min",
+				min: 10.0,
+				max: 100.0,
+				step: 1.0,
+				orientation: "horizontal",
+				slide: function( event, ui ) {
+					//$("#slider-t").slider("option", "min", 1 / Processing.data.f);
+					Processing.data.f = ui.value;
+					updateLabels();
+				}
+			});
+
+			$(".ui-slider").each(function() {
+				$(this).bind("slide", function(event, ui) {
+					Processing.data.change = true;
+				})
+			});
+
+			$("#resistive-button").button().click(function() {
+				Processing.data.X = 0.0;
+				Processing.data.R = 1.0;
+				setAllSliders();
+			});
+			$("#capacitive-button").button().click(function() {
+				Processing.data.X = -1.0;
+				Processing.data.R = $("#slider-R").slider("option", "min");
+				setAllSliders();
+			});
+			$("#inductive-button").button().click(function() {
+				Processing.data.X = 1.0;
+				Processing.data.R = $("#slider-R").slider("option", "min");
+				setAllSliders();
+			});
+			$("#random-button").button().click(function() {
+				Processing.data.X = randomBetween($("#slider-X").slider("option", "min"), $("#slider-X").slider("option", "max"));
+				Processing.data.R = randomBetween($("#slider-R").slider("option", "min"), $("#slider-R").slider("option", "max"));
+				Processing.data.VaMag = randomBetween($("#slider-Va-mag").slider("option", "min"), $("#slider-Va-mag").slider("option", "max"));
+				Processing.data.VbMag = randomBetween($("#slider-Vb-mag").slider("option", "min"), $("#slider-Vb-mag").slider("option", "max"));
+				Processing.data.VaPhase = randomBetween($("#slider-Va-phase").slider("option", "min"), $("#slider-Va-phase").slider("option", "max"));
+				Processing.data.VbPhase = randomBetween($("#slider-Vb-phase").slider("option", "min"), $("#slider-Vb-phase").slider("option", "max"));
+
+				setAllSliders();
+			});
+			$("#reset-button").button().click(function() {
+				reset();
+			});
+
+			$("#info-button").button();
+			setTimeout(function() {
+				$("#info").fadeOut(2000, "easeOutCubic");
+			}, 1500 );
+
+			$("#info-button").mouseenter(function() {
+				$("#info").fadeIn();
+			});
+
+			$("#info").mouseenter(function() {
+				$("#info").stop(true);
+				$("#info").fadeTo(50, 1.0);
+			});
+
+			$("#info, #info-button").mouseleave(function() {
+				$("#info").delay(500).fadeOut();
+			});
+			
+			$("#P-Q-type").buttonset();
+
+			$("#P-Q-type").click(function() {
+				if ($("#P-Q-combined").is(":checked")) {
+					Processing.data.PQCombined = true;
+				}
+				else {
+					Processing.data.PQCombined = false;
+				}
+
+				Processing.data.change = true;
+			});
+		});
+
+		// rounds to two decimal places
+		function randomBetween(min, max) {
+			return Math.round((Math.random() * (max - min) + min) * 100) / 100;
+		}
+
+		function updateLabels() {
+			if (Processing.data.X >= 0) {
+				$("#X-R-label").text("Z = " + Processing.data.R + " + j" + Processing.data.X);
+			}
+			else {
+				$("#X-R-label").text("Z = " + Processing.data.R + " - j" + (Processing.data.X * -1));
+			}
+			$("#Va-label").html("Va = " + Processing.data.VaMag + " &#8736; " + Processing.data.VaPhase + "°");
+			$("#Vb-label").html("Vb = " + Processing.data.VbMag + " &#8736; " + Processing.data.VbPhase + "°");
+
+			$("#t-label").html("t = " + Processing.data.t + "s");
+			$("#f-label").html("f = " + Processing.data.f + "Hz");
+		}
+
+		function setAllSliders() {
+			$("#slider-X").slider("value", Processing.data.X);
+			$("#slider-R").slider("value", Processing.data.R);
+			$("#slider-Va-mag").slider("value", Processing.data.VaMag);
+			$("#slider-Vb-mag").slider("value", Processing.data.VbMag);
+			$("#slider-Va-phase").slider("value", Processing.data.VaPhase);
+			$("#slider-Vb-phase").slider("value", Processing.data.VbPhase);
+			$("#slider-t").slider("value", Processing.data.t);
+			$("#slider-f").slider("value", Processing.data.f);
+			
+			if (Processing.data.PQCombined == true) {
+				$("#P-Q-combined").attr('checked', true);
+			}
+			else {
+				$("#P-Q-separate").attr('checked', true);
+			}
+
+			Processing.data.change = true;
+
+			updateLabels();
+		}
+
+		function reset() {
+			Processing.data = {
+				VaMag: 1.0,
+				VbMag: 0.0,
+				VaPhase: 0.0,
+				VbPhase: 0.0,
+				R: 1.0,
+				X: 0.0,
+				t: 0.060,
+				f: 50.0,
+				PQCombined: Processing.data.PQCombined,
+				change: true
+			};
+
+			setAllSliders();
+		}
+
+		</script>
+		<style>
+			body {
+				 background-color: #000000;
+				 font-family: sans-serif;
+			}
+			h1 {
+
+			}
+			h2 {
+
+			}
+			div {
+				/*height: 2em;*/
+				color: #FFFFFF;
+				font-size: 0.5em;
+			}
+			div.controls {
+				/*width: 800px;*/
+				clear: left;
+			}
+			div.controls span {
+				display:table-cell;
+				vertical-align: middle;
+			}
+			div.controls span.horizontal {
+				width: 120px;
+				float: left;
+				margin: 10px;
+			}
+			div.controls span.vertical {
+				height: 80px;
+				float: left;
+				margin: 10px;
+
+			}
+			td {
+				vertical-align: top;
+			}
+			#slider-Va-mag .ui-slider-range { background: #B42126; }
+			#slider-Va-mag .ui-slider-handle { border-color: #B42126; }
+			#slider-Va-phase .ui-slider-range { background: #B42126; }
+			#slider-Va-phase .ui-slider-handle { border-color: #B42126; }
+			#slider-Vb-mag .ui-slider-range { background: #E26366; }
+			#slider-Vb-mag .ui-slider-handle { border-color: #E26366; }
+			#slider-Vb-phase .ui-slider-range { background: #E26366; }
+			#slider-Vb-phase .ui-slider-handle { border-color: #E26366; }
+			a {
+				font-weight:bold;
+				color:#0699C4;
+				text-decoration: none;
+			}
+			a:hover, a:active {
+				color:#003652;
+			}
+			#slider-X {
+				position: absolute;
+				left: 0px;
+				top: 25px;
+			}
+			#slider-R {
+				position: absolute;
+				left: 35px;
+				top: 60px;
+			}
+			#slider-Va-mag {
+				position: absolute;
+				left: 0px;
+				top: 170px;
+			}
+			#slider-Va-phase {
+				position: absolute;
+				left: 35px;
+				top: 205px;
+			}
+			#slider-Vb-mag {
+				position: absolute;
+				left: 0px;
+				top: 270px;
+			}
+			#slider-Vb-phase {
+				position: absolute;
+				left: 35px;
+				top: 305px;
+			}
+			#slider-t {
+				position: absolute;
+				left: 0px;
+				top: 400px;
+			}
+			#slider-f {
+				position: absolute;
+				left: 0px;
+				top: 465px;
+			}
+
+			#PowerFlowCanvas {
+				position: absolute;
+				left: 10px;
+				top: 0px;
+				z-index: -25;
+			}
+
+			span.label {
+				position: absolute;
+				font-size: 2.0em;
+				text-align: center;
+				font-family: courier;
+				font-weight: bold;
+			}
+			#X-R-label {
+				position: absolute;
+				left: 45px;
+				top: 40px;
+				color: #C8C8C8;
+			}
+			#Va-label {
+				position: absolute;
+				left: 45px;
+				top: 185px;
+				color: #B42126;
+			}
+			#Vb-label {
+				position: absolute;
+				left: 45px;
+				top: 285px;
+				color: #E26366;
+			}
+			#t-label {
+				position: absolute;
+				left: 10px;
+				top: 380px;
+				color: #C8C8C8;
+			}
+			#f-label {
+				position: absolute;
+				left: 10px;
+				top: 445px;
+				color: #C8C8C8;
+			}
+
+			#toolbar {
+				position: absolute;
+				left: 10px;
+				top: 510px;
+				padding: 5px;
+				height: 175px;
+			}
+			#toolbar button {
+				margin: 2px;
+			}
+			#P-Q-type {
+				padding: 2px;
+				font-size: 1em;
+			}
+			#reset-button {
+				top: 0px;
+			}
+			#info-button {
+				top: 8px;
+			}
+
+			/*.ui-effects-transfer { border: 2px solid #C8C8C8; }*/
+			#info {
+				padding: 0.4em;
+				position: absolute;
+				left: 130px;
+				top: 510px;
+				padding: 5px;
+				height: 175px;
+				width: 500px;
+			}
+			#info p {font-size: 1.5em; margin: 0.5em;}
+			#info h3 {font-size: 1.6em; margin: 0; padding: 0.4em; text-align: center;}
+		</style>
+	</head>
+	<body>
+ 		<div class="controls" id="X-R">
+ 			<span class="label" id="X-R-label"></span>
+			<span class="vertical" id="slider-X" title="reactance"></span>
+			<span class="horizontal" id="slider-R" title="resistance"></span>
+		</div>
+ 		<div class="controls" id="Va">
+ 			<span class="label" id="Va-label"></span>
+			<span class="vertical" id="slider-Va-mag" title="Va magnitude"></span>
+			<span class="horizontal" id="slider-Va-phase" title="Va phase"></span>
+		</div>
+ 		<div class="controls" id="Vb">
+ 			<span class="label" id="Vb-label"></span>
+			<span class="vertical" id="slider-Vb-mag" title="Vb magnitude"></span>
+			<span class="horizontal" id="slider-Vb-phase" title="Vb phase"></span>
+		</div>
+ 		<div class="controls" id="other">
+ 			<span class="label" id="t-label"></span>
+			<span class="horizontal" id="slider-t" title="duration of simulation"></span>
+ 			<span class="label" id="f-label"></span>
+			<span class="horizontal" id="slider-f" title="vary fundamental frequency; reactance remains constant, but capacitance or inductance changes"></span>
+		</div>
+		<div id="toolbar" class="ui-widget-content ui-corner-all">
+			<div id="P-Q-type">
+				<input type="radio" id="P-Q-combined" name="radio" checked="checked" /><label for="P-Q-combined" title="show the total instantaneous power">P + Q</label>
+				<input type="radio" id="P-Q-separate" name="radio" /><label for="P-Q-separate" title="show the real and reactive power separately">P, Q</label>
+			</div>
+			<button id="resistive-button" title="set impedance to be resistive">resistive</button><br />
+			<button id="inductive-button" title="set impedance to be inductive">inductive</button><br />
+			<button id="capacitive-button" title="set impedance to be capacitive">capacitive</button><br />
+			<button id="random-button" title="random impedance and voltages">random</button><br />
+			<button id="reset-button" title="reset to default values">reset</button><br />
+			<button id="info-button">info</button>
+		</div>
+		<div id="info" class="ui-widget-content ui-corner-all">
+			<h3 class="ui-widget-header ui-corner-all">Info - Visualisation of power flow</h3>
+			<p>
+				This plots the steady-state current and power flow waveforms between two voltage terminals (with arbitrary magnitude and phase), connected by a series impedance.
+			</p>
+			<p>
+				Interact with the simulation by varyng the voltages, <span style="color: #B42126;">Va</span> and <span style="color: #E26366;">Vb</span>, and the impedance, <span style="color: #C8C8C8;">Z</span>, using the scrollbars on the left.
+			</p>
+			<p>
+				This uses <a href="http://processingjs.org/">processing.js</a>, and requires an HTML5 browser, and does not work in Internet Explorer. The source code is <a href="PowerFlow.pde">here</a>.
+			</p>
+			<p>
+				Return to <a href="http://personal.strath.ac.uk/steven.m.blair">main page</a>.
+			</p>
+		</div>
+
+		<canvas id="PowerFlowCanvas" datasrc="PowerFlow.pde" width="1000" height="700"></canvas>
+	</body>
+</html>

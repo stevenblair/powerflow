@@ -1,0 +1,1 @@
+Interactive visualisation of the steady-state current and power flow between two voltage terminals (with arbitrary magnitude and phase), connected by a series impedance. Implemented in Processing.js.

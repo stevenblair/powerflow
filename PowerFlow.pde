@@ -212,9 +212,9 @@ float rms(float[] values) {
 void plot(float[] data, int startY, int c, String name, boolean showMean, boolean showRMS) {
   // show name
   fill(c);
-  textFont(fontBold);
+  //textFont(fontBold, 16);
   text(name, PHASORS_START_X - 90 + (name.equals("Q") ? 40 : 0), startY);
-  textFont(font);
+  //textFont(font, 16);
 
   // draw x-axis
   stroke(50);
@@ -250,11 +250,9 @@ void setup() {
   //strokeWeight(2);
   strokeCap(ROUND);
 
-  font = createFont("Courier New Bold", 16, true);
-  fontBold = createFont("Courier New Bold", 16, true);
-  textFont(font);
-  textLeading(10);
-  textFont(fontBold);
+  font = loadFont("Courier New Bold", 16);
+  //font = loadFont("monospace", 16);
+  textFont(font, 16);
   textLeading(10);
   textAlign(LEFT);
   smooth();

@@ -300,6 +300,8 @@ void draw() {
 
     Processing.data.change = false;
 
+    updateLabels();   // implemented in JavaScript
+
     ITERATIONS = int(totalTime / Ts);
     w = 2 * PI * f;
     L = X / w;

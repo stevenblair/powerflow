@@ -176,7 +176,7 @@ void drawPhasors(float m, float ang, int x, int y, color c) {
 
     if (mouseIsOverLine(x, y, x + mDraw*cos(ang), y - mDraw*sin(ang))) {
       fill(210);
-      text(nf(m, 1, 2) + "∠ " + nf(degrees(ang), 1) + "°", x + mDraw*cos(ang), y - mDraw*sin(ang));
+      text(nf(m, 1, 2) + "∠ " + nf(degrees(ang), 1) + "&deg;", x + mDraw*cos(ang), y - mDraw*sin(ang));
     }
   }
 }
